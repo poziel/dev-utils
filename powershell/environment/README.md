@@ -7,6 +7,12 @@ The Environment utility provides small helpers for reset/setup scripts that depe
 - `Get-UserEnvironmentVariable` - reads a User environment variable.
 - `Get-RequiredEnvironmentVariable` - reads an environment variable and throws when missing.
 - `Set-UserEnvironmentVariable` - persists a User environment variable and updates the current session.
+- `Get-UserPathEntries` - reads User PATH entries.
+- `Test-UserPathEntry` - checks if an entry exists in User PATH.
+- `Add-UserPathEntry` - adds an entry to User PATH when missing.
+- `Remove-UserPathEntry` - removes an entry from User PATH.
+- `Update-UserPathEntry` - replaces an existing User PATH entry.
+- `Upsert-UserPathEntry` - updates or adds a User PATH entry.
 - `Get-DriveLetterByLabel` - resolves a mounted drive by volume label.
 - `Normalize-DriveInput` - validates and normalizes drive-letter input.
 - `Resolve-PathFromDrive` - joins a drive letter with a relative path.
@@ -19,6 +25,7 @@ The Environment utility provides small helpers for reset/setup scripts that depe
 
 $scoopRoot = Get-RequiredEnvironmentVariable -Name "SCOOP_ROOT"
 Set-UserEnvironmentVariable -Name "GIT_CONFIG_GLOBAL" -Value "$scoopRoot\config\git\.gitconfig"
+Upsert-UserPathEntry -Path "$scoopRoot\shims" -Prepend
 ```
 
 ## Philosophy
