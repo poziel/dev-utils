@@ -97,19 +97,59 @@ function Normalize-PathEntry {
     return $Path.Trim().Trim('"').TrimEnd("\", "/").Replace("/", "\").ToLowerInvariant()
 }
 
-function Get-UserPathEntries {
+function Test-IsAdmin {
     <#
     .SYNOPSIS
-    Gets User PATH entries.
-
-    .DESCRIPTION
-    Reads the User PATH environment variable and returns non-empty entries in
-    their current order.
+    Checks whether the current PowerShell session is elevated.
 
     .OUTPUTS
-    System.String[]. User PATH entries.
+    System.Boolean. True when the current process has Administrator privileges.
     #>
-    $pathValue = Get-UserEnvironmentVariable -Name "Path"
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Assert-EnvironmentScopeAccess {
+    <#
+    .SYNOPSIS
+    Throws when the current process cannot write to the requested environment scope.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("User", "Machine")]
+        [string]$Scope
+    )
+
+    if ($Scope -eq "Machine" -and -not (Test-IsAdmin)) {
+        throw "Administrator rights are required to modify the Machine PATH."
+    }
+}
+
+function Get-PathEntries {
+    <#
+    .SYNOPSIS
+    Gets PATH entries for the requested environment scope.
+
+    .DESCRIPTION
+    Reads the PATH environment variable and returns non-empty entries in their
+    current order.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
+
+    .OUTPUTS
+    System.String[]. PATH entries.
+    #>
+    param(
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User"
+    )
+
+    $pathValue = [Environment]::GetEnvironmentVariable("Path", $Scope)
     if ([string]::IsNullOrWhiteSpace($pathValue)) {
         return @()
     }
@@ -117,46 +157,65 @@ function Get-UserPathEntries {
     return @($pathValue -split ";" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 
-function Set-UserPathEntries {
+function Set-PathEntries {
     <#
     .SYNOPSIS
-    Replaces the User PATH with the provided entries.
+    Replaces PATH entries for the requested environment scope.
 
     .DESCRIPTION
-    Persists the User PATH environment variable and updates the current session.
-    Empty entries are removed.
+    Persists the PATH environment variable for the requested scope. Empty
+    entries are removed. The current process PATH is updated only for User
+    scope because Machine PATH changes should be picked up by new processes.
 
     .PARAMETER Entries
     Ordered PATH entries to persist.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
     #>
     param(
         [Parameter(Mandatory)]
-        [string[]]$Entries
+        [string[]]$Entries,
+
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User"
     )
+
+    Assert-EnvironmentScopeAccess -Scope $Scope
 
     $cleanEntries = @($Entries | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     $pathValue = [string]::Join(";", $cleanEntries)
-    Set-UserEnvironmentVariable -Name "Path" -Value $pathValue
+    [Environment]::SetEnvironmentVariable("Path", $pathValue, $Scope)
+
+    if ($Scope -eq "User") {
+        Set-Item -Path "Env:Path" -Value $pathValue
+    }
 }
 
-function Test-UserPathEntry {
+function Test-PathEntry {
     <#
     .SYNOPSIS
-    Checks whether a path exists in the User PATH.
+    Checks whether a path exists in PATH for the requested environment scope.
 
     .PARAMETER Path
     PATH entry to search for.
 
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
+
     .OUTPUTS
-    System.Boolean. True when the path is already in User PATH.
+    System.Boolean. True when the path is already in PATH.
     #>
     param(
         [Parameter(Mandatory)]
-        [string]$Path
+        [string]$Path,
+
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User"
     )
 
     $target = Normalize-PathEntry -Path $Path
-    foreach ($entry in Get-UserPathEntries) {
+    foreach ($entry in Get-PathEntries -Scope $Scope) {
         if ((Normalize-PathEntry -Path $entry) -eq $target) {
             return $true
         }
@@ -165,13 +224,16 @@ function Test-UserPathEntry {
     return $false
 }
 
-function Add-UserPathEntry {
+function Add-PathEntry {
     <#
     .SYNOPSIS
-    Adds a path to the User PATH if it is missing.
+    Adds a path to PATH for the requested environment scope if it is missing.
 
     .PARAMETER Path
     PATH entry to add.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
 
     .PARAMETER Prepend
     Adds the entry at the beginning instead of the end.
@@ -183,58 +245,67 @@ function Add-UserPathEntry {
         [Parameter(Mandatory)]
         [string]$Path,
 
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User",
+
         [switch]$Prepend
     )
 
-    if (Test-UserPathEntry -Path $Path) {
+    if (Test-PathEntry -Path $Path -Scope $Scope) {
         return $false
     }
 
-    $entries = @(Get-UserPathEntries)
+    $entries = @(Get-PathEntries -Scope $Scope)
     if ($Prepend) {
-        Set-UserPathEntries -Entries (@($Path) + $entries)
+        Set-PathEntries -Entries (@($Path) + $entries) -Scope $Scope
     } else {
-        Set-UserPathEntries -Entries ($entries + @($Path))
+        Set-PathEntries -Entries ($entries + @($Path)) -Scope $Scope
     }
 
     return $true
 }
 
-function Remove-UserPathEntry {
+function Remove-PathEntry {
     <#
     .SYNOPSIS
-    Removes a path from the User PATH.
+    Removes a path from PATH for the requested environment scope.
 
     .PARAMETER Path
     PATH entry to remove.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
 
     .OUTPUTS
     System.Boolean. True when the PATH was changed.
     #>
     param(
         [Parameter(Mandatory)]
-        [string]$Path
+        [string]$Path,
+
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User"
     )
 
     $target = Normalize-PathEntry -Path $Path
-    $entries = @(Get-UserPathEntries)
+    $entries = @(Get-PathEntries -Scope $Scope)
     $remaining = @($entries | Where-Object { (Normalize-PathEntry -Path $_) -ne $target })
 
     if ($remaining.Count -eq $entries.Count) {
         return $false
     }
 
-    Set-UserPathEntries -Entries $remaining
+    Set-PathEntries -Entries $remaining -Scope $Scope
     return $true
 }
 
-function Update-UserPathEntry {
+function Update-PathEntry {
     <#
     .SYNOPSIS
-    Replaces an existing User PATH entry.
+    Replaces an existing PATH entry for the requested environment scope.
 
     .DESCRIPTION
-    Finds OldPath in User PATH and replaces it with NewPath while preserving
+    Finds OldPath in PATH and replaces it with NewPath while preserving
     entry order. If OldPath is missing, no change is made.
 
     .PARAMETER OldPath
@@ -242,6 +313,9 @@ function Update-UserPathEntry {
 
     .PARAMETER NewPath
     Replacement PATH entry.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
 
     .OUTPUTS
     System.Boolean. True when the PATH was changed.
@@ -251,13 +325,16 @@ function Update-UserPathEntry {
         [string]$OldPath,
 
         [Parameter(Mandatory)]
-        [string]$NewPath
+        [string]$NewPath,
+
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User"
     )
 
     $target = Normalize-PathEntry -Path $OldPath
     $changed = $false
     $entries = @(
-        Get-UserPathEntries | ForEach-Object {
+        Get-PathEntries -Scope $Scope | ForEach-Object {
             if ((Normalize-PathEntry -Path $_) -eq $target) {
                 $changed = $true
                 $NewPath
@@ -271,14 +348,14 @@ function Update-UserPathEntry {
         return $false
     }
 
-    Set-UserPathEntries -Entries $entries
+    Set-PathEntries -Entries $entries -Scope $Scope
     return $true
 }
 
-function Upsert-UserPathEntry {
+function Upsert-PathEntry {
     <#
     .SYNOPSIS
-    Updates or adds a User PATH entry.
+    Updates or adds a PATH entry for the requested environment scope.
 
     .DESCRIPTION
     If OldPath is provided and exists, it is replaced with Path. If Path already
@@ -289,6 +366,9 @@ function Upsert-UserPathEntry {
 
     .PARAMETER OldPath
     Optional old PATH entry to replace.
+
+    .PARAMETER Scope
+    Environment scope. Valid values are User and Machine. Defaults to User.
 
     .PARAMETER Prepend
     Adds a missing entry at the beginning instead of the end.
@@ -302,16 +382,27 @@ function Upsert-UserPathEntry {
 
         [string]$OldPath = "",
 
+        [ValidateSet("User", "Machine")]
+        [string]$Scope = "User",
+
         [switch]$Prepend
     )
 
-    if (-not [string]::IsNullOrWhiteSpace($OldPath) -and (Update-UserPathEntry -OldPath $OldPath -NewPath $Path)) {
+    if (-not [string]::IsNullOrWhiteSpace($OldPath) -and (Update-PathEntry -OldPath $OldPath -NewPath $Path -Scope $Scope)) {
         return "Updated"
     }
 
-    if (Add-UserPathEntry -Path $Path -Prepend:$Prepend) {
+    if (Add-PathEntry -Path $Path -Scope $Scope -Prepend:$Prepend) {
         return "Added"
     }
 
     return "Unchanged"
 }
+
+function Get-UserPathEntries { <# .SYNOPSIS Gets User PATH entries. #> Get-PathEntries -Scope User }
+function Set-UserPathEntries { <# .SYNOPSIS Replaces User PATH entries. #> param([Parameter(Mandatory)][string[]]$Entries) Set-PathEntries -Entries $Entries -Scope User }
+function Test-UserPathEntry { <# .SYNOPSIS Checks whether a path exists in User PATH. #> param([Parameter(Mandatory)][string]$Path) Test-PathEntry -Path $Path -Scope User }
+function Add-UserPathEntry { <# .SYNOPSIS Adds a path to User PATH if missing. #> param([Parameter(Mandatory)][string]$Path,[switch]$Prepend) Add-PathEntry -Path $Path -Scope User -Prepend:$Prepend }
+function Remove-UserPathEntry { <# .SYNOPSIS Removes a path from User PATH. #> param([Parameter(Mandatory)][string]$Path) Remove-PathEntry -Path $Path -Scope User }
+function Update-UserPathEntry { <# .SYNOPSIS Replaces an existing User PATH entry. #> param([Parameter(Mandatory)][string]$OldPath,[Parameter(Mandatory)][string]$NewPath) Update-PathEntry -OldPath $OldPath -NewPath $NewPath -Scope User }
+function Upsert-UserPathEntry { <# .SYNOPSIS Updates or adds a User PATH entry. #> param([Parameter(Mandatory)][string]$Path,[string]$OldPath = "",[switch]$Prepend) Upsert-PathEntry -Path $Path -OldPath $OldPath -Scope User -Prepend:$Prepend }
