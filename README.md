@@ -71,6 +71,13 @@ dev-utils/
       banner.ps1
       prompts.ps1
       version.txt
+    environment/
+      README.md
+      bootstrap.ps1
+      variables.ps1
+      drives.ps1
+      paths.ps1
+      version.txt
   python/
     README.md
     console/
