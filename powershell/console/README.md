@@ -85,10 +85,6 @@ When used locally, `powershell/console/bootstrap.ps1` can also be dot-sourced di
 . .\bootstrap.ps1
 ```
 
-## Versioning
-
-The PowerShell bootstrap currently loads the latest version directly from GitHub raw each time. `version.txt` remains in the utility folder as a simple human-readable library version marker, but the bootstrap does not use it for cache invalidation.
-
 ## Implementation Philosophy
 
 This plugin has no dependencies and uses plain PowerShell functions so it can run on PowerShell 5+ and stay easy to reuse in setup scripts. Files are split by purpose:

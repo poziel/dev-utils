@@ -398,11 +398,3 @@ function Upsert-PathEntry {
 
     return "Unchanged"
 }
-
-function Get-UserPathEntries { <# .SYNOPSIS Gets User PATH entries. #> Get-PathEntries -Scope User }
-function Set-UserPathEntries { <# .SYNOPSIS Replaces User PATH entries. #> param([Parameter(Mandatory)][string[]]$Entries) Set-PathEntries -Entries $Entries -Scope User }
-function Test-UserPathEntry { <# .SYNOPSIS Checks whether a path exists in User PATH. #> param([Parameter(Mandatory)][string]$Path) Test-PathEntry -Path $Path -Scope User }
-function Add-UserPathEntry { <# .SYNOPSIS Adds a path to User PATH if missing. #> param([Parameter(Mandatory)][string]$Path,[switch]$Prepend) Add-PathEntry -Path $Path -Scope User -Prepend:$Prepend }
-function Remove-UserPathEntry { <# .SYNOPSIS Removes a path from User PATH. #> param([Parameter(Mandatory)][string]$Path) Remove-PathEntry -Path $Path -Scope User }
-function Update-UserPathEntry { <# .SYNOPSIS Replaces an existing User PATH entry. #> param([Parameter(Mandatory)][string]$OldPath,[Parameter(Mandatory)][string]$NewPath) Update-PathEntry -OldPath $OldPath -NewPath $NewPath -Scope User }
-function Upsert-UserPathEntry { <# .SYNOPSIS Updates or adds a User PATH entry. #> param([Parameter(Mandatory)][string]$Path,[string]$OldPath = "",[switch]$Prepend) Upsert-PathEntry -Path $Path -OldPath $OldPath -Scope User -Prepend:$Prepend }

@@ -19,7 +19,7 @@ This repository is intentionally not a framework. It exists to keep small, pract
 - Python 3.9+
 - JavaScript on Node.js 18+
 
-Each language has its own folder, README, bootstrap script, utility implementation, and `version.txt` file.
+Each language has its own folder, README, bootstrap script, and utility implementation files.
 
 ## Bootstrap System
 
@@ -70,14 +70,12 @@ dev-utils/
       messages.ps1
       banner.ps1
       prompts.ps1
-      version.txt
     environment/
       README.md
       bootstrap.ps1
       variables.ps1
       drives.ps1
       paths.ps1
-      version.txt
   python/
     README.md
     console/
@@ -101,7 +99,6 @@ New utilities should follow the same pattern:
 - one plugin folder
 - one plugin `bootstrap.ps1`
 - a small number of focused implementation files
-- one `version.txt`
 - one focused README
 
 New languages can be added by creating another top-level language folder with the same conventions.

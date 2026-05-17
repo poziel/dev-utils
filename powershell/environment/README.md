@@ -13,7 +13,6 @@ The Environment utility provides small helpers for reset/setup scripts that depe
 - `Remove-PathEntry` - removes an entry from User or Machine PATH.
 - `Update-PathEntry` - replaces an existing User or Machine PATH entry.
 - `Upsert-PathEntry` - updates or adds a User or Machine PATH entry.
-- `Get-UserPathEntries`, `Test-UserPathEntry`, `Add-UserPathEntry`, `Remove-UserPathEntry`, `Update-UserPathEntry`, `Upsert-UserPathEntry` - User-scope convenience wrappers.
 - `Get-DriveLetterByLabel` - resolves a mounted drive by volume label.
 - `Normalize-DriveInput` - validates and normalizes drive-letter input.
 - `Resolve-PathFromDrive` - joins a drive letter with a relative path.
