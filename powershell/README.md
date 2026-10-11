@@ -4,7 +4,7 @@ This folder contains lightweight PowerShell helper utilities for scripts, setup 
 
 ## Available Utilities
 
-- `console` - colored console output helpers for sections, status messages, warnings, errors, and spacing.
+- `console` - colored output, script banners, prompts, and menus with key-based actions.
 - `environment` - helpers for User environment variables, drive-label lookup, and path normalization.
 
 ## Bootstrap Usage

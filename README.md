@@ -70,6 +70,7 @@ dev-utils/
       messages.ps1
       banner.ps1
       prompts.ps1
+      menus.ps1
     environment/
       README.md
       bootstrap.ps1

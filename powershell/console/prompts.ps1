@@ -1,5 +1,26 @@
 Set-StrictMode -Version 2.0
 
+function Wait-Continue {
+    <#
+    .SYNOPSIS
+    Waits for the user to press Enter before continuing.
+
+    .PARAMETER Message
+    Prompt displayed while waiting. Defaults to "Press Enter to continue".
+
+    .EXAMPLE
+    Wait-Continue
+    #>
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string]$Message = "Press Enter to continue"
+    )
+
+    # Read-Host adds a colon when given a prompt; render the message ourselves.
+    Write-Host $Message -NoNewline
+    $null = Read-Host
+}
+
 function Show-Choices {
     <#
     .SYNOPSIS
